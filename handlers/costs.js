@@ -17,61 +17,71 @@ class CostsHandler {
   ];
 
   /**
-   * Validates and extracts the cost details from the request body.
+   * Creates a new cost item.
+   * @param {Object} req - The request object.
+   * @param {Object} res - The response object.
+   * @param {Function} next - The next middleware function.
+   * @returns {Promise<void>}
+   */
+  async createNewCost(req, res, next) {
+    try {
+      // validate and throw in case of validation failure
+      this.validateCostDetails(req.body);
+
+      const { user_id, year, month, day, description, category, sum } =
+        req.body;
+
+      const nextId = this.generateNextCostId();
+
+      const costData = {
+        id: nextId,
+        user_id,
+        year,
+        month,
+        day,
+        description,
+        category,
+        sum,
+      };
+
+      const cost = await Cost.create(costData);
+
+      // Return the created cost to the user immediately
+      res.json(cost);
+
+      // Check if the new cost belongs to an existing report
+      await this.checkAndDeleteCostReport(user_id, year, month);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Validates the cost details and throws in case of a failed validation.
    * @param {Object} reqBody - The request body containing the cost details.
    * @returns {Object} The validated and extracted cost details.
    * @throws {Object} 400 - Bad Request if any required field is missing or if the category is invalid.
    */
-  validateAndExtractCostDetails(reqBody) {
+  validateCostDetails(reqBody) {
+    let errorMessage = "";
     // Missing values
-    if (
-      !reqBody.user_id ||
-      !reqBody.year ||
-      !reqBody.month ||
-      !reqBody.day ||
-      !reqBody.description ||
-      !reqBody.category ||
-      !reqBody.sum
-    ) {
-      throw {
-        status: 400,
-        message:
-          "One of the following is missing: user_id, year, month, day, description, category, sum.",
-      };
+    if (!this.hasAllRequiredFields(reqBody)) {
+      errorMessage =
+        "One of the following is missing: user_id, year, month, day, description, category, sum.";
 
       // Wrong category
     } else if (!this.costCategories.includes(reqBody.category)) {
+      errorMessage = "Wrong category";
+    } else if (!this.isValidDate(reqBody)) {
+      errorMessage =
+        "Invalid date, accepts only: 1970<year<2100, 1<month<12, day according the month provided";
+    }
+
+    if (errorMessage)
       throw {
         status: 400,
-        message: "Wrong category",
+        message: errorMessage,
       };
-    } else {
-      // Validate year, month, and day
-      reqBody.year = parseInt(reqBody.year);
-      reqBody.month = parseInt(reqBody.month);
-      reqBody.day = parseInt(reqBody.day);
-
-      if (
-        isNaN(reqBody.year) ||
-        reqBody.year < 1970 ||
-        reqBody.year > 2100 ||
-        isNaN(reqBody.month) ||
-        reqBody.month < 1 ||
-        reqBody.month > 12 ||
-        isNaN(reqBody.day) ||
-        reqBody.day < 1 ||
-        reqBody.day > new Date(reqBody.year, reqBody.month, 0).getDate()
-      ) {
-        throw {
-          status: 400,
-          message:
-            "Invalid date, accepts only: 1970<year<2100, 1<month<12, day according the month provided",
-        };
-      } else {
-        // Validation passed
-        return reqBody;
-      }
-    }
   }
 
   /**
@@ -94,49 +104,41 @@ class CostsHandler {
     }
   }
 
-  /**
-   * Creates a new cost item.
-   * @param {Object} req - The request object.
-   * @param {Object} res - The response object.
-   * @param {Function} next - The next middleware function.
-   * @returns {Promise<void>}
-   */
-  async createNewCost(req, res, next) {
-    try {
-      const { user_id, year, month, day, description, category, sum } =
-        this.validateAndExtractCostDetails(req.body);
+  hasAllRequiredFields(reqBody) {
+    return (
+      reqBody.user_id &&
+      reqBody.year &&
+      reqBody.month &&
+      reqBody.day &&
+      reqBody.description &&
+      reqBody.category &&
+      reqBody.sum
+    );
+  }
 
-      // Fetch the last id from the costs collection
-      const lastCost = await Cost.findOne(
-        {},
-        { id: 1 },
-        { sort: { id: -1 } }
-      ).lean();
+  isValidDate(reqBody) {
+    const areNumbers =
+      parseInt(reqBody.year) &&
+      parseInt(reqBody.month) &&
+      parseInt(reqBody.day);
+    const yearWithinRange = reqBody.year >= 1970 && reqBody.year <= 2100;
+    const monthWithinRange = reqBody.month >= 1 && reqBody.month <= 12;
+    const dayWithinRange =
+      reqBody.day >= 1 &&
+      reqBody.day <= new Date(reqBody.year, reqBody.month, 0).getDate();
 
-      // Generate the next id based on the last id
-      const nextId = lastCost ? lastCost.id + 1 : 1;
+    return areNumbers && yearWithinRange && monthWithinRange && dayWithinRange;
+  }
 
-      const costData = {
-        id: nextId,
-        user_id,
-        year: year,
-        month: month,
-        day: day,
-        description,
-        category,
-        sum,
-      };
+  async generateNextCostId() {
+    const lastCost = await Cost.findOne(
+      {},
+      { id: 1 },
+      { sort: { id: -1 } }
+    ).lean();
 
-      const cost = await Cost.create(costData);
-
-      // Return the created cost to the user immediately
-      res.json(cost);
-
-      // Check if the new cost belongs to an existing report
-      await this.checkAndDeleteCostReport(user_id, year, month);
-    } catch (error) {
-      next(error);
-    }
+    // Generate the next id based on the last id
+    return lastCost ? lastCost.id + 1 : 1;
   }
 }
 
