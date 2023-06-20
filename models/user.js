@@ -1,24 +1,27 @@
-const mongoose = require('mongoose');
+// Rafael Ashurov 312054711
+// Netanel Braginsky 205801160
+
+const mongoose = require("mongoose");
 
 const UsersSchema = new mongoose.Schema({
-	id: {
-		type: Number,
-		required: true,
-	},
-	first_name: {
-		type: String,
-		required: true,
-	},
-	last_name: {
-		type: String,
-		required: true,
-	},
-	birthday: {
-		type: Date,
-		required: true,
-	}
+  id: {
+    type: Number,
+    required: true,
+  },
+  first_name: {
+    type: String,
+    required: true,
+  },
+  last_name: {
+    type: String,
+    required: true,
+  },
+  birthday: {
+    type: Date,
+    required: true,
+  },
 });
 
-const User = mongoose.model('Users',UsersSchema);
+const User = mongoose.model("Users", UsersSchema);
 
 module.exports = User;
