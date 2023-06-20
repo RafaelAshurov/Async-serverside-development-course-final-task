@@ -117,10 +117,10 @@ class CostsHandler {
   }
 
   isValidDate(reqBody) {
-    const areNumbers =
-      parseInt(reqBody.year) &&
-      parseInt(reqBody.month) &&
-      parseInt(reqBody.day);
+    reqBody.year = parseInt(reqBody.year);
+    reqBody.month = parseInt(reqBody.month);
+    reqBody.day = parseInt(reqBody.day);
+    const areNumbers = reqBody.year && reqBody.month && reqBody.day;
     const yearWithinRange = reqBody.year >= 1970 && reqBody.year <= 2100;
     const monthWithinRange = reqBody.month >= 1 && reqBody.month <= 12;
     const dayWithinRange =
