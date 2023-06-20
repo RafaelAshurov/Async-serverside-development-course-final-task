@@ -28,6 +28,10 @@ class CostsHandler {
    */
   async createNewCost(req, res, next) {
     try {
+      // parse string to number
+      req.body.year = parseInt(req.body.year);
+      req.body.month = parseInt(req.body.month);
+      req.body.day = parseInt(req.body.day);
       // validate and throw in case of validation failure
       this.validateCostDetails(req.body);
 
@@ -38,10 +42,10 @@ class CostsHandler {
 
       const costData = {
         id: nextId,
-        user_id,
-        year,
-        month,
-        day,
+        user_id: parseInt(user_id),
+        year: parseInt(year),
+        month: parseInt(month),
+        day: parseInt(day),
         description,
         category,
         sum,
@@ -107,6 +111,11 @@ class CostsHandler {
     }
   }
 
+  /**
+   * Checks if all required fields are present in the request body.
+   * @param {Object} reqBody - The request body.
+   * @returns {boolean} - True if all fields are present, false otherwise.
+   */
   hasAllRequiredFields(reqBody) {
     return (
       reqBody.user_id &&
@@ -119,8 +128,15 @@ class CostsHandler {
     );
   }
 
+  /**
+   * Checks if the provided year, month, and day constitute a valid date.
+   * @param {number} year - The year.
+   * @param {number} month - The month.
+   * @param {number} day - The day.
+   * @returns {boolean} - True if the date is valid, false otherwise.
+   */
   isValidDate(year, month, day) {
-    const areNumbers = parseInt(year) && parseInt(month) && parseInt(day);
+    const areNumbers = !isNaN(year) && !isNaN(month) && !isNaN(day);
     const yearWithinRange = year >= 1970 && year <= 2100;
     const monthWithinRange = month >= 1 && month <= 12;
     const dayWithinRange =
@@ -129,6 +145,10 @@ class CostsHandler {
     return areNumbers && yearWithinRange && monthWithinRange && dayWithinRange;
   }
 
+  /**
+   * Generates the ID for the next cost item.
+   * @returns {Promise<number>} - The ID for the next cost item.
+   */
   async generateNextCostId() {
     const lastCost = await Cost.findOne(
       {},

@@ -1,6 +1,3 @@
-// Rafael Ashurov 312054711
-// Netanel Braginsky 205801160
-
 const Cost = require("../models/cost");
 const Report = require("../models/report");
 const CostsHandler = require("./costs");
@@ -17,7 +14,11 @@ class ReportsHandler {
    */
   async getReport(req, res, next) {
     try {
-      this.validateReportDetails(req.query);
+      // parse strings to numbers
+      req.query.year = parseInt(req.query.year);
+      req.query.month = parseInt(req.query.month);
+
+      this.validateAndExtractReportDetails(req.query);
       const { user_id, year, month } = req.query;
 
       // Check if a similar report already exists
@@ -29,15 +30,42 @@ class ReportsHandler {
 
       res.json(
         existingReport
-          ? existingReport
-          : await this.createReport(user_id, year, month)
+          ? existingReport.details
+          : await this.createReportDetails(user_id, year, month).details
       );
     } catch (error) {
       next(error);
     }
   }
 
-  async createReport(user_id, year, month) {
+  /**
+   * Validates the details from the request query.
+   * @param {Object} reqQuery - The request query containing the report details.
+   * @throws {Object} 400 - Bad Request if any required field is missing or if the date is invalid.
+   */
+  validateAndExtractReportDetails(reqQuery) {
+    // Check for missing values
+    if (!reqQuery.user_id || !reqQuery.year || !reqQuery.month) {
+      throw {
+        status: 400,
+        message: "One of the following is missing: user_id, year, month",
+      };
+    } else if (!this.isValidDate(reqQuery.year, reqQuery.month)) {
+      throw {
+        status: 400,
+        message: "Invalid date, accepts only: 1900<year<2100, 1<month<12",
+      };
+    }
+  }
+
+  /**
+   * Creates a new report for a specific user, year, and month, and saves it in the database.
+   * @param {Number} user_id - The user ID.
+   * @param {Number} year - The year.
+   * @param {Number} month - The month.
+   * @returns {Promise<Object>} The newly created report.
+   */
+  async createReportDetails(user_id, year, month) {
     // Create a new report
     const report = await this.getReportDetails(user_id, year, month);
 
@@ -58,45 +86,20 @@ class ReportsHandler {
     });
 
     // Save the new report to the database
-    const newReport = await Report.create({
+    return await Report.create({
       user_id: parseInt(user_id),
       year: year,
       month: month,
       details: result,
     });
-
-    return newReport;
   }
 
   /**
-   * Validates and extracts the report details from the request query.
-   * @param {Object} reqQuery - The request query containing the report details.
-   * @returns {Object} The validated and extracted report details.
-   * @throws {Object} 400 - Bad Request if any required field is missing or if the date is invalid.
-   */
-  validateReportDetails(reqQuery) {
-    let errorMessage = "";
-    // Check for missing values
-    if (!this.hasAllRequiredFields(reqQuery)) {
-      errorMessage = "One of the following is missing: user_id, year, month";
-    } else if (!this.isValidDate(reqQuery.year, reqQuery.month)) {
-      errorMessage = "Invalid date, accepts only: 1900<year<2100, 1<month<12";
-    }
-
-    if (errorMessage) {
-      throw {
-        status: 400,
-        message: errorMessage,
-      };
-    }
-  }
-
-  /**
-   * Retrieves the cost details for a specific user, year, and month.
+   * Retrieves the cost details for a specific user, year, and month by grouping the costs based on categories.
    * @param {Number} user_id - The user ID.
    * @param {Number} year - The year.
    * @param {Number} month - The month.
-   * @returns {Promise<Array>} The cost details for the specified user, year, and month.
+   * @returns {Promise<Array>} An array of cost details for each category.
    */
   getReportDetails(user_id, year, month) {
     // Pipeline to aggregate the costs
@@ -128,13 +131,16 @@ class ReportsHandler {
     return Cost.aggregate(pipeline);
   }
 
-  // validation functions
-  hasAllRequiredFields(reqQuery) {
-    return reqQuery.user_id && reqQuery.year && reqQuery.month;
-  }
-
+  /**
+   * Checks if a given year and month represent a valid date.
+   * The year is considered valid if it's a number between 1970 and 2100.
+   * The month is considered valid if it's a number between 1 and 12.
+   * @param {Number} year - The year to be checked.
+   * @param {Number} month - The month to be checked.
+   * @returns {Boolean} true if the date is valid, false otherwise.
+   */
   isValidDate(year, month) {
-    const areNumbers = parseInt(year) && parseInt(month);
+    const areNumbers = !isNaN(year) && !isNaN(month);
     const yearWithinRange = year >= 1970 && year <= 2100;
     const monthWithinRange = month >= 1 && month <= 12;
 
