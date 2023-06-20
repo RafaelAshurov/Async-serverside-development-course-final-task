@@ -28,11 +28,12 @@ class ReportsHandler {
         month: month,
       });
 
-      res.json(
-        existingReport
-          ? existingReport.details
-          : await this.createReportDetails(user_id, year, month).details
-      );
+      if (existingReport) {
+        res.json(existingReport.details);
+      } else {
+        const newReport = await this.createReportDetails(user_id, year, month);
+        res.json(newReport.details);
+      }
     } catch (error) {
       next(error);
     }
