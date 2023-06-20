@@ -31,7 +31,7 @@ class CostsHandler {
       const { user_id, year, month, day, description, category, sum } =
         req.body;
 
-      const nextId = this.generateNextCostId();
+      const nextId = await this.generateNextCostId();
 
       const costData = {
         id: nextId,
@@ -49,7 +49,7 @@ class CostsHandler {
       // Return the created cost to the user immediately
       res.json(cost);
 
-      // Check if the new cost belongs to an existing report
+      // Delete report if the cost belongs to it
       await this.checkAndDeleteCostReport(user_id, year, month);
     } catch (error) {
       next(error);
@@ -72,7 +72,7 @@ class CostsHandler {
       // Wrong category
     } else if (!this.costCategories.includes(reqBody.category)) {
       errorMessage = "Wrong category";
-    } else if (!this.isValidDate(reqBody)) {
+    } else if (!this.isValidDate(reqBody.year, reqBody.month, reqBody.day)) {
       errorMessage =
         "Invalid date, accepts only: 1970<year<2100, 1<month<12, day according the month provided";
     }
@@ -116,16 +116,12 @@ class CostsHandler {
     );
   }
 
-  isValidDate(reqBody) {
-    reqBody.year = parseInt(reqBody.year);
-    reqBody.month = parseInt(reqBody.month);
-    reqBody.day = parseInt(reqBody.day);
-    const areNumbers = reqBody.year && reqBody.month && reqBody.day;
-    const yearWithinRange = reqBody.year >= 1970 && reqBody.year <= 2100;
-    const monthWithinRange = reqBody.month >= 1 && reqBody.month <= 12;
+  isValidDate(year, month, day) {
+    const areNumbers = parseInt(year) && parseInt(month) && parseInt(day);
+    const yearWithinRange = year >= 1970 && year <= 2100;
+    const monthWithinRange = month >= 1 && month <= 12;
     const dayWithinRange =
-      reqBody.day >= 1 &&
-      reqBody.day <= new Date(reqBody.year, reqBody.month, 0).getDate();
+      day >= 1 && day <= new Date(year, month, 0).getDate();
 
     return areNumbers && yearWithinRange && monthWithinRange && dayWithinRange;
   }
