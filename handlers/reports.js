@@ -14,11 +14,12 @@ class ReportsHandler {
    */
   async getReport(req, res, next) {
     try {
+      this.validateAndExtractReportDetails(req.query);
+
       // parse strings to numbers
       req.query.year = parseInt(req.query.year);
       req.query.month = parseInt(req.query.month);
 
-      this.validateAndExtractReportDetails(req.query);
       const { user_id, year, month } = req.query;
 
       // Check if a similar report already exists

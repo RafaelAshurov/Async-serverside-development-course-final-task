@@ -99,16 +99,17 @@ class CostsHandler {
    * @returns {Promise<void>}
    */
   async checkAndDeleteCostReport(user_id, year, month) {
-    const existingReport = await Report.findOne({
+    const deletedReport = await Report.findOneAndDelete({
       user_id: parseInt(user_id),
       year: year,
       month: month,
     });
 
-    if (existingReport) {
-      // Delete the existing report
-      await Report.findByIdAndDelete(existingReport._id);
-    }
+    deletedReport
+      ? console.log("Deleted report: ", deletedReport)
+      : console.log(
+          `No report was find for user_id:${user_id}, ${month}/${year}`
+        );
   }
 
   /**
